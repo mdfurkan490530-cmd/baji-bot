@@ -1,33 +1,35 @@
+
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
 MY_LINK = "https://www.tuval.online/af/JR2T0P5L/join"
-BOT_USERNAME = "YOUR_BOT_USERNAME" # এখানে @ ছাড়া তোমার বটের নাম দিবে যেমন baji_helper_bot
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = update.effective_user.first_name
-    # ভাইরাল শেয়ার বাটন
-    share_text = f"🔥 এই বটে একাউন্ট খুললে বোনাস পাওয়া যায়! {MY_LINK}"
-    share_url = f"https://t.me/share/url?url={MY_LINK}&text={share_text}"
-    
-    keyboard = [
-        [InlineKeyboardButton("👉 একাউন্ট খুলুন - বোনাস নিন", url=MY_LINK)],
-        [InlineKeyboardButton("🚀 বন্ধুকে শেয়ার করুন", url=share_url)],
-        [InlineKeyboardButton("💬 সাপোর্ট", url=MY_LINK)]
-    ]
-    text = f"হ্যালো {name} ভাই! 👋\n\nআমি Baji Helper Bot।\n✅ যেকোনো প্রশ্নের উত্তর দিবো\n✅ একাউন্ট, ডিপোজিট, বোনাস সব হেল্প করবো\n\nনিচের বাটনে ক্লিক করে শুরু করুন 👇"
+    keyboard = [[InlineKeyboardButton("👉 একাউন্ট খুলুন 👈", url=MY_LINK)]]
+    text = f"হ্যালো {name} ভাই! 👋\nআমি তোমার বাজি হেল্পার বট।\nযেকোনো প্রশ্ন করো, আমি উত্তর দিবো।"
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def reply_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = update.message.text
+    msg = update.message.text.lower()
     
-    share_text = f"এই বটটা দেখো, অটো উত্তর দেয়! {MY_LINK}"
-    share_url = f"https://t.me/share/url?url={MY_LINK}&text={share_text}"
+    if "একাউন্ট" in msg or "account" in msg or "খুলব" in msg:
+        ans = "একাউন্ট খুলতে নিচের বাটনে ক্লিক করো। Join Now এ চাপ দিয়ে 2 মিনিটে খুলে যাবে।"
+    elif "ডিপোজিট" in msg or "টাকা" in msg:
+        ans = "ডিপোজিট করতে একাউন্টে Login করে Deposit > bKash/Nagad সিলেক্ট করে 500 টাকা থেকে শুরু করতে পারবে।"
+    elif "বোনাস" in msg or "bonus" in msg:
+        ans = "প্রথম ডিপোজিটে বোনাস পেতে অবশ্যই আমার লিংক থেকে একাউন্ট খুলতে হবে।"
+    elif "উইথড্র" in msg or "তুলব" in msg:
+        ans = "উইথড্র করতে Withdraw এ গিয়ে bKash/Nagad দাও, 5 মিনিটে টাকা পাবে।"
+    else:
+        ans = f"তুমি বলেছো: {update.message.text}\n\nএটা নিয়ে হেল্প লাগলে বলো, আমি সাথে সাথে হেল্প করবো।"
 
-    keyboard = [
-        [InlineKeyboardButton("🔗 আমার লিংকে জয়েন করুন", url=MY_LINK)],
-        [InlineKeyboardButton("📤 শেয়ার করে আয় করুন", url=share_url)]
-    ]
-    
+    keyboard = [[InlineKeyboardButton("🔗 আমার লিংক থেকে জয়েন করুন 🔗", url=MY_LINK)]]
+    await update.message.reply_text(ans, reply_markup=InlineKeyboardMarkup(keyboard))
+
+app = Application.builder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_all))
+app.run_polling()
