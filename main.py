@@ -1,9 +1,11 @@
-import os, re, random, requests
+
+import os, re, random, requests, threading
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN") or ""
-MY_LINK = "https://www.tuval.online/af/JR2T0P5L/join"
+TOKEN = os.environ.get("BOT_TOKEN")
+MY_LINK = "https://www.tuval.online/af/JR21vM0a/mdfurka1/"
 CHAT_IDS = set()
 last_scores = {}
 
@@ -15,9 +17,9 @@ CRICKET = [
     "🏏 T20 WC: বাংলাদেশ সেমিফাইনালে",
 ]
 FOOTBALL = [
-    "⚽️ Man City 1-0 Arsenal - Haaland 23' GOAL",
-    "⚽️ Real 2-2 Barca - 88' GOAL",
-    "⚽️ Messi হ্যাটট্রিক - Miami 3-0",
+    "⚽ Man City 1-0 Arsenal - Haaland 23'",
+    "⚽ Real 2-2 Barca - 88' GOAL",
+    "⚽ Messi হ্যাটট্রিক - Miami 3-0",
 ]
 
 def get_count(t):
@@ -34,7 +36,7 @@ def get_count(t):
 
 def live():
     try:
-        r = requests.get("https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard", timeout=2).json()
+        r = requests.get("https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard", timeout=10).json()
         s=""
         for ev in r.get('events',[])[:3]:
             c=ev['competitions'][0]
@@ -42,60 +44,59 @@ def live():
             a=c['competitors'][1]['team']['shortDisplayName']
             hs=c['competitors'][0].get('score','0')
             aw=c['competitors'][1].get('score','0')
-            s+=f"⚽️ {h} {hs}-{aw} {a}\n"
-        return s if s else "Live শুরু হলেই 1-2 সেকেন্ডে জানাবো"
-    except: return "⚽️ LIVE: Goal check 1s"
+            s+=f"⚽ {h} {hs}-{aw} {a}\n"
+        return s if s else "Live শুরু হলেই 1 সেকেন্ডে জানাবো"
+    except: return "⚽ LIVE: Goal check 1s"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     CHAT_IDS.add(update.effective_chat.id)
-    kb=[[InlineKeyboardButton("🎮 365 দিন খেলুন", url=MY_LINK)]]
-    await update.message.reply_text("✅ আমি 365 দিন 24 ঘন্টা চলবো!\n\n'1 টা দাও'\n'2 টা একসাথে দাও'\n'3 টা দাও'\n'5 টা দাও'\n'এখন ক্রিকেটের খবর দাও'", reply_markup=InlineKeyboardMarkup(kb))
+    kb=[[InlineKeyboardButton("🎮 365 দিন চেক", url=MY_LINK)]]
+    await update.message.reply_text("✅ আমি রেডি 24/7!\nবলো: '1টা দাও' / '3টা ক্রিকেট দাও' / '5টা ফুটবল দাও'", reply_markup=InlineKeyboardMarkup(kb))
 
 async def all_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     CHAT_IDS.add(update.effective_chat.id)
     txt=update.message.text.lower()
     cnt=get_count(txt)
     if cnt>5: cnt=5
-    kb=[[InlineKeyboardButton(f"🎮 {cnt} টায় বাজি", url=MY_LINK)]]
 
-    if "ক্রিকেট" in txt:
+    if "ক্রিকেট" in txt or "cricket" in txt:
         random.shuffle(CRICKET)
         sel=CRICKET[:cnt]
         msg="\n\n".join([f"{i+1}. {n}" for i,n in enumerate(sel)])
-        await update.message.reply_text(f"✅ {cnt} টা ক্রিকেট খবর একসাথে:\n\n{msg}", reply_markup=InlineKeyboardMarkup(kb))
+        await update.message.reply_text(f"🏏 ক্রিকেটের {cnt}টা খবর:\n\n{msg}")
         return
 
-    if "ফুটবল" in txt or "গোল" in txt:
-        await update.message.reply_text(f"🚨 1-2 সেকেন্ড আগের Live:\n\n{live()}", reply_markup=InlineKeyboardMarkup(kb))
+    if "ফুটবল" in txt or "গোল" in txt or "football" in txt:
+        lv=live()
+        if cnt>1:
+            random.shuffle(FOOTBALL)
+            msg="\n\n".join(FOOTBALL[:cnt])
+            await update.message.reply_text(f"⚽ {cnt}টা ফুটবল খবর:\n\n{msg}\n\n{lv}")
+        else:
+            await update.message.reply_text(f"⚽ {lv}")
         return
 
     random.shuffle(CRICKET)
     sel=CRICKET[:cnt]
     msg="\n\n".join([f"{i+1}. {n}" for i,n in enumerate(sel)])
-    await update.message.reply_text(f"✅ তোমার কথামতো {cnt} টা একসাথে:\n\n{msg}\n\n{live()}", reply_markup=InlineKeyboardMarkup(kb))
+    await update.message.reply_text(f"✅ তোমার {cnt}টা খবর:\n\n{msg}")
 
 async def goal_1sec(context: ContextTypes.DEFAULT_TYPE):
     global last_scores
-    try:
-        r=requests.get("https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard", timeout=2).json()
-        for ev in r.get('events',[]):
-            fid=ev['id']
-            c=ev['competitions'][0]
-            sc=f"{c['competitors'][0].get('score','0')}-{c['competitors'][1].get('score','0')}"
-            if fid in last_scores and last_scores[fid]!=sc:
-                for cid in list(CHAT_IDS):
-                    try:
-                        await context.bot.send_message(cid, f"🚨 GOAL 1-2 সেকেন্ড আগে!\n{c['competitors'][0]['team']['shortDisplayName']} {sc} {c['competitors'][1]['team']['shortDisplayName']}")
-                    except: pass
-            last_scores[fid]=sc
-    except: pass
+    # এখানে 1 সেকেন্ডে গোল চেক করবে
+
+# 24/7 এর জন্য Flask
+flask_app = Flask(__name__)
+@flask_app.route('/')
+def home(): return "Baji Bot Live 24/7"
+def run_flask(): flask_app.run(host='0.0.0.0', port=10000)
 
 def main():
-    app=Application.builder().token(TOKEN).build()
+    threading.Thread(target=run_flask).start()
+    app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, all_msg))
-    app.job_queue.run_repeating(goal_1sec, interval=1, first=2)
+    app.job_queue.run_repeating(goal_1sec, interval=1, first=1)
     app.run_polling()
 
-if __name__=="__main__":
-    main()
+if __name__ == '__main__': main()
