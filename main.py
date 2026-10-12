@@ -6,17 +6,14 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from groq import Groq
 
-# --- 24 ঘন্টা চালু রাখার জন্য ---
+# Render এর জন্য Flask লাগবে
 app_flask = Flask(__name__)
-app = app_flask # Render এর জন্য app নাম লাগবে
+app = app_flask
+
 @app_flask.route('/')
 def home():
     return "Baji Bot is Live 24/7!"
 
-def run_flask():
-    app_flask.run(host='0.0.0.0', port=10000)
-
-# --- API Keys ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
@@ -28,8 +25,7 @@ def get_number(text):
             return v
     nums = re.findall(r'\d+', text)
     if nums:
-        n = int(nums[0])
-        return min(n, 5)
+        return min(int(nums[0]), 5)
     return 1
 
 def get_sport_type(text):
@@ -41,20 +37,16 @@ def get_sport_type(text):
     return 'all sports'
 
 async def get_sports_news(count, sport_type):
-    prompt = f"তুমি একজন খেলার খবর রিপোর্টার। আমাকে {sport_type} এর {count} টি সর্বশেষ খবর দাও। প্রতিটি খবর ছোট করে ২ লাইনে দাও, সাথে ইমোজি ব্যবহার করো। ভাষা: বাংলা। আজকের তারিখ ধরে খবর দাও।"
+    prompt = f"তুমি একজন খেলার খবর রিপোর্টার। আমাকে {sport_type} এর {count} টি সর্বশেষ খবর দাও। ২ লাইনে, ইমোজি সহ, বাংলায়।"
     try:
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant"
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
         return completion.choices[0].message.content
     except Exception as e:
-        return f"খবর আনতে সমস্যা হচ্ছে ভাই: {e}"
-
-# 1 সেকেন্ডে গোল চেক
-async def goal_1sec(context: ContextTypes.DEFAULT_TYPE):
-    print("Checking goal - 1 sec")
+        return f"সমস্যা হচ্ছে ভাই: {e}"
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
@@ -65,33 +57,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(news)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "আসসালামু আলাইকুম ভাই! আমি রেডি ২৪/৭ 🔥\n\n"
-        "এভাবে বলো:\n"
-        "👉 '১টা খবর দাও'\n"
-        "👉 '৩টা খেলার খবর দাও'\n"
-        "👉 '৫টা ক্রিকেটের খবর দাও'\n"
-        "👉 'ফুটবলের খবর দাও'\n"
-        "তুমি যা বলবে আমি তাই দেবো!"
-    )
+    await update.message.reply_text("আসসালামু আলাইকুম ভাই! রেডি ২৪/৭ 🔥\n'৩টা খবর দাও' এভাবে লিখো")
 
-# --- বট সেটআপ ---
+# বট সেটআপ
 application = Application.builder().token(BOT_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-application.job_queue.run_repeating(goal_1sec, interval=1, first=1)
 
 def run_bot():
-    print("Bot is running 24/7... 1 sec check ON")
+    print("Bot is running 24/7...")
     application.run_polling()
 
-# Render Gunicorn এর জন্য বট ব্যাকগ্রাউন্ডে চালু হবে
 if BOT_TOKEN:
     threading.Thread(target=run_bot, daemon=True).start()
-
-def main():
-    threading.Thread(target=run_flask, daemon=True).start()
-    run_bot()
-
-if __name__ == '__main__':
-    main()
