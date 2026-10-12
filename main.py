@@ -44,7 +44,7 @@ async def get_sports_news(count, sport_type):
     prompt = f"তুমি একজন খেলার খবর রিপোর্টার। আমাকে {sport_type} এর {count} টি সর্বশেষ খবর দাও। প্রতিটি খবর ছোট করে ২ লাইনে দাও, সাথে ইমোজি ব্যবহার করো। ভাষা: বাংলা। আজকের তারিখ ধরে খবর দাও।"
     try:
         completion = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant"
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
